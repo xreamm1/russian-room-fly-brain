@@ -7,6 +7,7 @@ export class Brain {
     this.until = new Int32Array(n); this.active = []; this.touched = new Uint8Array(n);
     this.tick = 0; this.seed = seed; this.delay = Array.from({length: 19}, () => []);
     this.totalSpikes = 0;
+    this.filteredHz = {};
   }
   random() { let x = this.seed; x ^= x << 13; x ^= x >>> 17; x ^= x << 5; this.seed = x; return (x >>> 0) / 4294967296; }
   activate(i) { if(!this.touched[i]) { this.touched[i]=1; this.active.push(i); } }
@@ -36,13 +37,16 @@ export class Brain {
         }
       }
     }
-    const outputs = {}, spikes = {};
+    const outputs = {}, spikes = {}, ratesHz={};
     for (const [key, pool] of Object.entries(this.m.outputs)) {
       spikes[key] = pool.reduce((sum,i) => sum + counts[i], 0);
+      ratesHz[key]=spikes[key]*1000/(pool.length*steps*p.dt);
+      const alpha=1-Math.exp(-steps*p.dt/50);
+      this.filteredHz[key]=(this.filteredHz[key]||0)*(1-alpha)+ratesHz[key]*alpha;
       const response=pool.reduce((sum,i) => sum + Math.max(0, this.v[i]-p.rest)/7 + counts[i]*2, 0) / pool.length;
       outputs[key] = response / (2 + response);
     }
     this.totalSpikes += total;
-    return {outputs, spikes, total, totalSpikes:this.totalSpikes, simMs:this.tick*p.dt, active:this.active.length};
+    return {outputs, spikes, ratesHz, filteredHz:{...this.filteredHz}, total, totalSpikes:this.totalSpikes, simMs:this.tick*p.dt, active:this.active.length};
   }
 }

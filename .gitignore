@@ -4,3 +4,9 @@ test-results/
 playwright-report/
 *.log
 .env*
+.venv*/
+.cache/
+research_notes/
+reports/
+__pycache__/
+*.pyc
