@@ -13,6 +13,5 @@ export function decodeBody(readouts) {
   const thrust=(leftWing+rightWing)*.5;
   return {channels,leftWing,rightWing,thrust,threatDrive,odorDrive,
     turn:clamp((rightWing-leftWing)*8,-5,5),
-    targetSpeed:Math.min(.85+threatDrive*.35,thrust*1.2),
-    targetHeight:thrust===0?0:.8+2.1*clamp((l+r)*.35+threatDrive*.4-(ol+or)*.15-feeding*.7)};
+    targetSpeed:Math.min(.85+threatDrive*.35,thrust*1.2)};
 }

@@ -2,6 +2,7 @@ import * as T from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createRoom } from './room.js';
 import { decodeBody } from './body-adapter.js';
+import { createBodyState, stepBody } from './body-physics.js';
 import './style.css';
 
 document.querySelector('#app').innerHTML=`
@@ -12,7 +13,7 @@ document.querySelector('#app').innerHTML=`
   <div id="fly-label" class="fly-label"><span></span>D. MELANOGASTER</div>
   <section class="controls" aria-label="Управление экспериментом"><div class="controls-caption"><span class="control-dot"></span> ИЗМЕНИТЕ СРЕДУ</div><div class="control-buttons"><button id="light" aria-pressed="true"><span class="button-symbol">☼</span><span>Люстра<span class="button-sub" id="light-state">Включена</span></span><span class="toggle on" id="light-toggle"></span></button><button id="bait" aria-pressed="false"><span class="button-symbol">◇</span><span>Положить приманку<span class="button-sub">Сахар на столе</span></span><span class="control-plus" id="bait-mark">+</span></button><button id="camera" aria-pressed="false"><span class="button-symbol">◎</span><span>Камера<span class="button-sub" id="camera-state">Общий вид</span></span><span class="control-plus">↗</span></button></div><p class="hint">Проведите курсором рядом с мухой — она почувствует угрозу. <span>Перетаскивайте сцену, чтобы осмотреть комнату.</span></p></section>
   <footer><span>FLYWIRE 783 <span class="footer-sep">/</span> ПОЛНЫЙ КОННЕКТОМ</span><span class="model-note">Экспериментальные сенсоры и управление полётом <button id="details">О модели ↗</button></span><span id="fps">— FPS</span></footer>
-  <dialog id="about"><button id="about-close" aria-label="Закрыть">×</button><div class="eyebrow">ЧТО ЗДЕСЬ НАСТОЯЩЕЕ</div><h2>Мозг — из данных.<br>Комната — эксперимент.</h2><p>Загружаются все <b>138 639 нейронов и 15 091 983 связи</b> из вашего проекта: FlyWire, материализация 783. Знаки и целочисленные веса сохранены без прореживания. Контрольные суммы SHA-256 проверяются в браузере.</p><p>В отдельном Web Worker работает численный LIF-порт: шаг 0,1 мс, задержка синапса 1,8 мс, рефрактерность 2,2 мс. График показывает вычисленные спайки. Скорость нейросимуляции зависит от устройства и показана отдельно от FPS.</p><p><b>Граница достоверности.</b> В исходном CSV нет анатомических классов. Свет, угроза и запах подаются в выбранные по связности экспериментальные пулы; это не идентифицированные фоторецепторы, нейроны опасности или обонятельные рецепторы. Сахар дополнительно активирует 21 известный GRN из исходного benchmark.py при контакте.</p><p>Моторные считыватели выбраны по исходящим возбуждающим связям. Внешний декодер откалиброван на 19 опытах с сетью. Только её вычисленная активность задаёт тягу, поворот и высоту. Контроллер тела не знает, где приманка или курсор; готовых маршрутов и гарантированной посадки нет. Скорость отображается в м/с по реальному времени, масштаб комнаты — 1 единица = 1 метр. Это полная сеть связей, но <b>не доказанная эмуляция поведения или полётной биомеханики мухи</b>. Тело увеличено для видимости. Численный порт не проходил научную валидацию на эквивалентность Brian2.</p><p><a href="https://github.com/xreamm1/russian-room-fly-brain" target="_blank" rel="noreferrer">Код, данные и описание метода ↗</a></p></dialog>
+  <dialog id="about"><button id="about-close" aria-label="Закрыть">×</button><div class="eyebrow">ЧТО ЗДЕСЬ НАСТОЯЩЕЕ</div><h2>Мозг — из данных.<br>Комната — эксперимент.</h2><p>Загружаются все <b>138 639 нейронов и 15 091 983 связи</b> из вашего проекта: FlyWire, материализация 783. Знаки и целочисленные веса сохранены без прореживания. Контрольные суммы SHA-256 проверяются в браузере.</p><p>В отдельном Web Worker работает численный LIF-порт: шаг 0,1 мс, задержка синапса 1,8 мс, рефрактерность 2,2 мс. График показывает вычисленные спайки. Скорость нейросимуляции зависит от устройства и показана отдельно от FPS.</p><p><b>Граница достоверности.</b> В исходном CSV нет анатомических классов. Свет, угроза и запах подаются в выбранные по связности экспериментальные пулы; это не идентифицированные фоторецепторы, нейроны опасности или обонятельные рецепторы. Сахар дополнительно активирует 21 известный GRN из исходного benchmark.py при контакте.</p><p>Моторные считыватели выбраны по исходящим возбуждающим связям. Внешний декодер откалиброван на 19 опытах с сетью. Только её вычисленная активность задаёт тягу и поворот. Высота получается из приближённого баланса подъёмной силы, гравитации и сопротивления; фиксированной высоты нет. При контакте с поверхностью трение останавливает тело, рост подъёмной силы позволяет взлететь. Это инженерная механика контактов, а не модель настоящих мышц и лапок. Контроллер тела не знает, где приманка или курсор; готовых маршрутов и гарантированной посадки нет. Скорость отображается в м/с по реальному времени, масштаб комнаты — 1 единица = 1 метр. Это полная сеть связей, но <b>не доказанная эмуляция поведения или полётной биомеханики мухи</b>. Тело увеличено для видимости. Численный порт не проходил научную валидацию на эквивалентность Brian2.</p><p><a href="https://github.com/xreamm1/russian-room-fly-brain" target="_blank" rel="noreferrer">Код, данные и описание метода ↗</a></p></dialog>
 </main>`;
 
 const $=id=>document.getElementById(id);
@@ -26,11 +27,12 @@ renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;v
 const camera=new T.PerspectiveCamera(42,1,.025,60);camera.position.set(8.8,6.1,10.5);
 const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(-.15,1.1,0);controls.enableDamping=true;controls.maxPolarAngle=Math.PI/2-.04;controls.minDistance=5;controls.maxDistance=17;controls.maxAzimuthAngle=Math.PI*.48;controls.minAzimuthAngle=-.1;controls.enablePan=false;
 const room=createRoom(scene);room.fly.position.set(-.45,1.5,.5);
+const body=createBodyState(room.fly.position);
 const floor=new T.Mesh(new T.PlaneGeometry(200,200),new T.MeshStandardMaterial({color:'#a8ac98',roughness:1}));floor.rotation.x=-Math.PI/2;floor.position.y=-.22;floor.receiveShadow=true;scene.add(floor);
 const worker=new Worker(new URL('./brain.worker.js',import.meta.url),{type:'module'});
 let ready=false, light=true,bait=false,fpv=false,activity=null,outputs={},danger=0,lastStimulus=0;
 let yaw=0,speed=0,landed=false,last=performance.now(),sensorTime=0,frames=0,fpsStart=last;
-const cursor=new T.Vector2(10,10),projected=new T.Vector3(),velocity=new T.Vector3();
+const cursor=new T.Vector2(10,10),projected=new T.Vector3();
 const history=Array(110).fill(0);let smoothed={lightLeft:0,lightRight:0,danger:0,odorLeft:0,odorRight:0,sugar:0};
 const debug={ready:false,activity:null,rates:{},position:[],fps:0,source:null,errors:[]};window.__flyDebug=debug;
 worker.onmessage=({data})=>{
@@ -80,30 +82,19 @@ function animate(now){
   const turn=decoded.turn;
   const pos=room.fly.position;
   if(ready){
-    yaw+=turn*dt;
-    speed=T.MathUtils.lerp(speed,decoded.targetSpeed,1-Math.exp(-dt*6));
-    velocity.set(Math.sin(yaw)*speed,0,-Math.cos(yaw)*speed);pos.addScaledVector(velocity,dt);
-    pos.y=T.MathUtils.lerp(pos.y,decoded.targetHeight,1-Math.exp(-dt*1.2));
-    // Solid collisions constrain motion, but never navigate towards a stimulus.
-    if(Math.abs(pos.x)>3.2){pos.x=T.MathUtils.clamp(pos.x,-3.2,3.2);yaw=-yaw;}
-    if(Math.abs(pos.z)>2.7){pos.z=T.MathUtils.clamp(pos.z,-2.7,2.7);yaw=Math.PI-yaw;}
-    let surface=.09;
-    if(pos.x>.68&&pos.x<2.42&&pos.z>.12&&pos.z<1.27)surface=1.19;
-    if(pos.x>-2.4&&pos.x<1.1&&pos.z<-1.65)surface=1.29;
-    if(pos.x>2.42&&pos.z<-1.2)surface=1.31;
-    landed=pos.y<=surface+.025&&decoded.targetHeight<surface;
-    pos.y=T.MathUtils.clamp(pos.y,surface,2.85);
-    if(landed)speed*=Math.exp(-dt*12);
+    stepBody(body,decoded,dt);
+    yaw=body.yaw;speed=body.speed;
+    landed=body.contact!==null&&Math.hypot(body.velocity.x,body.velocity.y,body.velocity.z)<.025;
   }
-  room.fly.rotation.set(Math.min(.18,speed*.2),yaw,-turn*.12);
-  room.wings.forEach((wing,i)=>wing.rotation.z=(i?1:-1)*Math.sin(now*.09)*(landed?.05:.55)*Math.min(1,thrust*3));
+  room.fly.rotation.set(landed?0:Math.min(.18,speed*.2),yaw,landed?0:-turn*.12);
+  room.wings.forEach((wing,i)=>wing.rotation.z=(i?1:-1)*(landed?.12:Math.sin(now*.09)*.55*Math.min(1,thrust*3)));
   room.locator.quaternion.copy(room.fly.quaternion).invert().multiply(camera.quaternion);
   room.dust.rotation.y=now*.000006;
   if(fpv){const forward=new T.Vector3(Math.sin(yaw),.05,-Math.cos(yaw));camera.position.copy(pos).addScaledVector(forward,.16);camera.lookAt(pos.clone().addScaledVector(forward,2));camera.fov=78;camera.updateProjectionMatrix();}else controls.update();
   projected.copy(pos).project(camera);const rect=viewport.getBoundingClientRect();$('fly-label').style.left=`${(projected.x*.5+.5)*rect.width+18}px`;$('fly-label').style.top=`${(-projected.y*.5+.5)*rect.height-18}px`;$('fly-label').style.opacity=projected.z<1?'1':'0';
   $('thrust-value').textContent=`${Math.round(thrust*100)}%`;$('turn-value').textContent=`${turn>=0?'+':''}${turn.toFixed(2)}`;
-  if(now-lastStimulus>2000)$('behavior').textContent=!ready?'Ожидает мозг':landed?'Контакт с поверхностью':`Нейроуправление · ${speed.toFixed(2)} м/с`;
-  document.querySelector('.monitor').dataset.telemetry=JSON.stringify({ready,simMs:activity?.simMs??0,position:pos.toArray(),speed,channels:decoded.channels,rates:debug.rates});
+  if(now-lastStimulus>2000)$('behavior').textContent=!ready?'Ожидает мозг':landed?`Посадка · ${body.contact.name.toLowerCase()}`:`Полёт · ${speed.toFixed(2)} м/с`;
+  document.querySelector('.monitor').dataset.telemetry=JSON.stringify({ready,simMs:activity?.simMs??0,position:pos.toArray(),speed,landed,contact:body.contact?.name??null,channels:decoded.channels,rates:debug.rates});
   debug.position=pos.toArray();debug.thrust=thrust;debug.turn=turn;debug.landed=landed;debug.light=light;debug.bait=bait;debug.fpv=fpv;
   renderer.render(scene,camera);
 }
