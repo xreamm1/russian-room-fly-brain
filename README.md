@@ -1,0 +1,45 @@
+# Муха / Комната № 783
+
+Interactive Three.js room with the **entire local FlyWire 783 connectivity** running in a browser Web Worker. No Python server, GPU requirement or local filesystem dependency for visitors.
+
+**Live:** https://xreamm1.github.io/russian-room-fly-brain/
+
+## What is simulated
+
+138,639 neurons, 15,091,983 directed edges, original signed integer `Excitatory x Connectivity` weights. No pruning, no dummy graph, no prerecorded activity. Source: `2025_Completeness_783.csv` and `2025_Connectivity_783.parquet` from the supplied fly-brain project. `main.py` dispatches benchmark runners; `code/run_pytorch.py` implements sparse recurrent LIF, and `code/paper-phil-drosophila/model.py` contains the Brian2 reference.
+
+The browser port uses resting/reset potential −52 mV, threshold −45 mV, membrane time constant 20 ms, synapse time constant 5 ms, weight scaling .275, dt .1 ms, delay 1.8 ms and refractory period 2.2 ms. Event delivery traverses original outgoing edges; membrane and synaptic states are computed for every reached neuron. The port uses explicit membrane integration and exponential synaptic decay, with refractory state freezing, and is **not validated as numerically equivalent** to either reference backend. The original code contains differing refractory details between backends. Neural time is slower than wall time and the measured ratio is shown in the HUD. Rendering runs separately.
+
+## Scientific limits: sensory and motor interfaces
+
+The supplied completeness table only has IDs and `Completed`, not anatomical cell classes. Consequently:
+
+- Light-left, light-right, threat, odor-left and odor-right are **synthetic injection pools**, selected deterministically from high positive outgoing weight strength (24 neurons each). They are not identified photoreceptors, danger neurons or olfactory receptor neurons.
+- The 21 sugar GRN IDs come from the source `benchmark.py` experiment. They are activated at 200 Hz on close sugar contact. This is a gustatory stimulus; sugar is not treated as a scientifically validated airborne odor.
+- Motor readouts are 32 disjoint downstream targets per input, selected by positive summed connectivity. They are not known flight motor neurons. The source has P9 forward-*walking* IDs, which are not reused as flight neurons.
+- Readout membrane depolarization and actual spikes power thrust, turning, avoidance and landing in an **engineering body adapter**. Directional steering towards environmental targets, containment and furniture collision handling are part of that adapter, not a learned biological flight controller. No movement is generated while the brain is unloaded or lacks output.
+- The fly is enlarged for visibility. The camera shows a conventional perspective view, not a compound-eye optics simulation.
+
+The graph and activity are real computations over supplied data; biological flight, consciousness, learning and a scientifically validated behavioral reconstruction are not claimed.
+
+## CDN and integrity
+
+Immutable data version: `brain-v1` (never moved). Primary manifest:
+
+https://cdn.jsdelivr.net/gh/xreamm1/russian-room-fly-brain@brain-v1/public/brain/manifest.json
+
+Files `offsets.bin.gz`, `edges-00.bin.gz` through `edges-15.bin.gz`, and `neuron-ids.json.gz` are listed with compressed/raw byte counts and SHA-256 in that manifest. All original weights fit signed int16 without quantization. Posts and offsets are little-endian uint32. Each edge shard contains all posts first, then all weights, with its exact start/count in the manifest. Neuron IDs are strings to avoid JavaScript 64-bit integer loss.
+
+Browser fetching is CORS-enabled HTTPS. It checks SHA-256 before decompression. If jsDelivr is unavailable it retries the **remote** GitHub Pages mirror at `https://xreamm1.github.io/russian-room-fly-brain/brain/`. There is no silent local/dummy model fallback. Network or integrity failures are shown explicitly. The 16 shards are below the jsDelivr 20 MB file limit; compressed data total is about 50.4 MB. Runtime edge arrays use about 91 MB, plus browser/model state; a desktop browser is recommended.
+
+## Development and deployment
+
+Node 22+: `npm ci`, `npm run dev`. Production: `npm test`, `npm run build`. GitHub Actions deploys `dist/` to Pages on pushes to `main`.
+
+To re-export from an authorized local source: install numpy, pandas and pyarrow; run `python scripts/export_brain.py <source-directory>`. Publish a **new immutable data tag** and update the worker URL when changing brain data. Tests verify exported sizes, checksums, targets, offsets, delay, inhibition, refractory behavior and reproducible stimulation.
+
+Room: patterned wallpaper, left window with translucent tulle, cast-iron radiator, wall and floor carpets, sofa, walnut sideboard, kettle, tea glass and warm five-arm chandelier. Controls toggle light, sugar, and room/fly cameras. Cursor proximity injects the threat stimulus.
+
+## Provenance and licensing
+
+Application and numerical port: GPL-2.0-only; see LICENSE, preserved from the supplied project. The upstream model credits Shiu et al., *A leaky integrate-and-fire computational model based on the connectome of the entire adult Drosophila brain reveals insights into sensorimotor processing*: https://doi.org/10.1038/s41586-024-07763-9 . FlyWire dataset attribution and original data rights remain with their respective authors; this project does not claim a new license over third-party connectivity data. Source parquet SHA-256 is recorded in the manifest. The export does not include osu_mania, personal settings, learned memory, compiled executables, benchmarks, caches or virtual environments.
